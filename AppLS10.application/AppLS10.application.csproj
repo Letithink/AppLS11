@@ -7,7 +7,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Folder Include="UseCases\Auths\" />
       <Folder Include="UseCases\Responses\" />
       <Folder Include="UseCases\Roles\" />
       <Folder Include="UseCases\Tickets\" />
@@ -16,6 +15,10 @@
 
     <ItemGroup>
       <ProjectReference Include="..\AppLS10.domain\AppLS10.domain.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="MediatR" Version="12.5.0" />
     </ItemGroup>
 
 
