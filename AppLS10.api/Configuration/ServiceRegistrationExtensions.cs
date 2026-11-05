@@ -1,4 +1,5 @@
 using System.Text;
+using AppLS10.application;
 using AppLS10.domain.Constants;
 using AppLS10.infrastructure.Configuration;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -13,6 +14,9 @@ public static class ServiceRegistrationExtensions
     {
         services.AddHttpContextAccessor();
         services.AddInfrastructureServices(configuration);
+
+        // CQRS
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(typeof(ApplicationAssemblyMarker).Assembly));
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
@@ -42,9 +46,9 @@ public static class ServiceRegistrationExtensions
         {
             options.SwaggerDoc("v1", new OpenApiInfo
             {
-                Title = "AppLS10 API",
+                Title = "AppLS10 API (Lab 11 CQRS)",
                 Version = "v1",
-                Description = "Ticketera con Clean Architecture, Unit of Work y JWT."
+                Description = "Ticketera con Clean Architecture, CQRS (MediatR) y JWT."
             });
 
             options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
