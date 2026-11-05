@@ -28,3 +28,8 @@ logs/
 ## OS
 .DS_Store
 Thumbs.db
+
+
+## Capturas y documentación local
+README.md
+**/imagenes/
