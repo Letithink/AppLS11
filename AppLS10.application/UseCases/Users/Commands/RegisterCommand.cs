@@ -3,20 +3,24 @@ using AppLS10.application.Mapping;
 using AppLS10.domain.Constants;
 using AppLS10.domain.Entities;
 using AppLS10.domain.Puertos;
+using MediatR;
 
-namespace AppLS10.application.UseCases.Auth;
+namespace AppLS10.application.UseCases.Users.Commands;
 
-public class RegisterUseCase
+public record RegisterCommand(RegisterDto Dto) : IRequest<UserDto?>;
+
+internal sealed class RegisterCommandHandler : IRequestHandler<RegisterCommand, UserDto?>
 {
     private readonly IUnitOfWork _unitOfWork;
 
-    public RegisterUseCase(IUnitOfWork unitOfWork)
+    public RegisterCommandHandler(IUnitOfWork unitOfWork)
     {
         _unitOfWork = unitOfWork;
     }
-    
-    public async Task<UserDto?> ExecuteAsync(RegisterDto dto)
+
+    public async Task<UserDto?> Handle(RegisterCommand request, CancellationToken cancellationToken)
     {
+        var dto = request.Dto;
         var users = (await _unitOfWork.Users.GetAllAsync()).ToList();
 
         if (users.Any(u => u.Username == dto.Username || (dto.Email != null && u.Email == dto.Email)))
@@ -45,3 +49,4 @@ public class RegisterUseCase
         return user.ToDto();
     }
 }
+
