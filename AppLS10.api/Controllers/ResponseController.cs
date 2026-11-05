@@ -1,50 +1,41 @@
 using AppLS10.api.Extensions;
 using AppLS10.application.DTOs;
-using AppLS10.application.UseCases.Responses;
+using AppLS10.application.UseCases.Responses.Commands;
+using AppLS10.application.UseCases.Responses.Queries;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AppLS10.api.Controllers;
 
 [ApiController]
-[Route("api/tickets/{ticketId:guid}/responses")]
+[Route("api/ticket/{ticketId:guid}/response")]
 [Authorize(Policy = "AdminOrUser")]
 public class ResponseController : ControllerBase
 {
-    private readonly AddResponseUseCase _addResponseUseCase;
-    private readonly GetResponsesByTicketUseCase _getResponsesByTicketUseCase;
+    private readonly IMediator _mediator;
 
-    public ResponseController(
-        AddResponseUseCase addResponseUseCase,
-        GetResponsesByTicketUseCase getResponsesByTicketUseCase)
+    public ResponseController(IMediator mediator)
     {
-        _addResponseUseCase = addResponseUseCase;
-        _getResponsesByTicketUseCase = getResponsesByTicketUseCase;
+        _mediator = mediator;
     }
 
     [HttpPost]
-    [ProducesResponseType(typeof(ResponseDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Create(Guid ticketId, [FromBody] CreateResponseDto dto)
+    public async Task<IActionResult> Create(Guid ticketId, CreateResponseDto dto)
     {
-        var created = await _addResponseUseCase.ExecuteAsync(ticketId, User.GetUserId(), dto);
+        var created = await _mediator.Send(new AddResponseCommand(ticketId, User.GetUserId(), dto));
         if (created == null)
-            return NotFound(new { message = $"Ticket con ID '{ticketId}' no encontrado." });
+            return NotFound();
 
         return Ok(created);
     }
 
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<ResponseDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetByTicket(Guid ticketId)
     {
-        var responses = await _getResponsesByTicketUseCase.ExecuteAsync(ticketId);
+        var responses = await _mediator.Send(new GetResponsesByTicketQuery(ticketId));
         if (responses == null)
-            return NotFound(new { message = $"Ticket con ID '{ticketId}' no encontrado." });
+            return NotFound();
 
         return Ok(responses);
     }

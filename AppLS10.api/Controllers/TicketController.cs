@@ -1,114 +1,75 @@
 using AppLS10.api.Extensions;
 using AppLS10.application.DTOs;
-using AppLS10.application.UseCases.Tickets;
+using AppLS10.application.UseCases.Tickets.Commands;
+using AppLS10.application.UseCases.Tickets.Queries;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AppLS10.api.Controllers;
 
 [ApiController]
-[Route("api/tickets")]
+[Route("api/[controller]")]
 public class TicketController : ControllerBase
 {
-    private readonly CreateTicketUseCase _createTicketUseCase;
-    private readonly GetTicketsUseCase _getTicketsUseCase;
-    private readonly GetMyTicketsUseCase _getMyTicketsUseCase;
-    private readonly GetTicketByIdUseCase _getTicketByIdUseCase;
-    private readonly UpdateTicketStatusUseCase _updateTicketStatusUseCase;
-    private readonly DeleteTicketUseCase _deleteTicketUseCase;
+    private readonly IMediator _mediator;
 
-    public TicketController(
-        CreateTicketUseCase createTicketUseCase,
-        GetTicketsUseCase getTicketsUseCase,
-        GetMyTicketsUseCase getMyTicketsUseCase,
-        GetTicketByIdUseCase getTicketByIdUseCase,
-        UpdateTicketStatusUseCase updateTicketStatusUseCase,
-        DeleteTicketUseCase deleteTicketUseCase)
+    public TicketController(IMediator mediator)
     {
-        _createTicketUseCase = createTicketUseCase;
-        _getTicketsUseCase = getTicketsUseCase;
-        _getMyTicketsUseCase = getMyTicketsUseCase;
-        _getTicketByIdUseCase = getTicketByIdUseCase;
-        _updateTicketStatusUseCase = updateTicketStatusUseCase;
-        _deleteTicketUseCase = deleteTicketUseCase;
+        _mediator = mediator;
     }
 
-    [HttpPost]
     [Authorize(Policy = "AdminOrUser")]
-    [ProducesResponseType(typeof(TicketDto), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> Create([FromBody] CreateTicketDto dto)
+    [HttpPost]
+    public async Task<IActionResult> Create(CreateTicketDto dto)
     {
-        var userId = User.GetUserId();
-        var ticket = await _createTicketUseCase.ExecuteAsync(userId, dto);
+        var ticket = await _mediator.Send(new CreateTicketCommand(User.GetUserId(), dto));
         return CreatedAtAction(nameof(GetById), new { id = ticket.TicketId }, ticket);
     }
 
+    [Authorize(Policy = "AdminOnly")]
     [HttpGet]
-    [Authorize(Policy = "AdminOnly")]
-    [ProducesResponseType(typeof(IEnumerable<TicketDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> GetAll([FromQuery] string? status = null)
+    public async Task<IActionResult> GetAll()
     {
-        var tickets = await _getTicketsUseCase.ExecuteAsync(status);
-        return Ok(tickets);
+        return Ok(await _mediator.Send(new GetTicketsQuery()));
     }
 
-    [HttpGet("my-tickets")]
     [Authorize(Policy = "AdminOrUser")]
-    [ProducesResponseType(typeof(IEnumerable<TicketDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> GetMyTickets()
+    [HttpGet("mine")]
+    public async Task<IActionResult> GetMine()
     {
-        var userId = User.GetUserId();
-        var tickets = await _getMyTicketsUseCase.ExecuteAsync(userId);
-        return Ok(tickets);
+        return Ok(await _mediator.Send(new GetMyTicketsQuery(User.GetUserId())));
     }
 
-    [HttpGet("{id:guid}")]
     [Authorize(Policy = "AdminOnly")]
-    [ProducesResponseType(typeof(TicketDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetById([FromRoute] Guid id)
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById(Guid id)
     {
-        var ticket = await _getTicketByIdUseCase.ExecuteAsync(id);
+        var ticket = await _mediator.Send(new GetTicketByIdQuery(id));
         if (ticket == null)
-            return NotFound(new { message = $"Ticket con ID '{id}' no encontrado." });
+            return NotFound();
 
         return Ok(ticket);
     }
 
-    [HttpPut("{id:guid}/status")]
     [Authorize(Policy = "AdminOnly")]
-    [ProducesResponseType(typeof(TicketDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdateStatus([FromRoute] Guid id, [FromBody] UpdateTicketStatusDto dto)
+    [HttpPut("{id:guid}/status")]
+    public async Task<IActionResult> UpdateStatus(Guid id, UpdateTicketStatusDto dto)
     {
-        var updated = await _updateTicketStatusUseCase.ExecuteAsync(id, dto);
-        if (updated == null)
-            return NotFound(new { message = $"Ticket con ID '{id}' no encontrado." });
+        var ticket = await _mediator.Send(new UpdateTicketStatusCommand(id, dto));
+        if (ticket == null)
+            return NotFound();
 
-        return Ok(updated);
+        return Ok(ticket);
     }
 
-    [HttpDelete("{id:guid}")]
     [Authorize(Policy = "AdminOnly")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Delete([FromRoute] Guid id)
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id)
     {
-        var deleted = await _deleteTicketUseCase.ExecuteAsync(id);
+        var deleted = await _mediator.Send(new DeleteTicketCommand(id));
         if (!deleted)
-            return NotFound(new { message = $"Ticket con ID '{id}' no encontrado." });
+            return NotFound();
 
         return NoContent();
     }

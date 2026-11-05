@@ -1,8 +1,7 @@
-using AppLS10.api.Extensions;
 using AppLS10.application.DTOs;
-using AppLS10.application.UseCases.Auth;
-using AppLS10.application.UseCases.Users;
-using Microsoft.AspNetCore.Authorization;
+using AppLS10.application.UseCases.Users.Commands;
+using AppLS10.application.UseCases.Users.Queries;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AppLS10.api.Controllers;
@@ -11,60 +10,30 @@ namespace AppLS10.api.Controllers;
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
-    private readonly RegisterUseCase _registerUseCase;
-    private readonly LoginUseCase _loginUseCase;
-    private readonly GetUserByIdUseCase _getUserByIdUseCase;
+    private readonly IMediator _mediator;
 
-    public AuthController(
-        RegisterUseCase registerUseCase,
-        LoginUseCase loginUseCase,
-        GetUserByIdUseCase getUserByIdUseCase)
+    public AuthController(IMediator mediator)
     {
-        _registerUseCase = registerUseCase;
-        _loginUseCase = loginUseCase;
-        _getUserByIdUseCase = getUserByIdUseCase;
+        _mediator = mediator;
     }
 
     [HttpPost("register")]
-    [AllowAnonymous]
-    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> Register([FromBody] RegisterDto dto)
+    public async Task<IActionResult> Register(RegisterDto dto)
     {
-        var result = await _registerUseCase.ExecuteAsync(dto);
-        if (result == null)
-            return Conflict(new { message = "El nombre de usuario o correo ya está en uso." });
+        var user = await _mediator.Send(new RegisterCommand(dto));
+        if (user == null)
+            return Conflict(new { message = "El usuario o el correo ya existen." });
 
-        return Ok(result);
+        return Ok(user);
     }
 
     [HttpPost("login")]
-    [AllowAnonymous]
-    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> Login([FromBody] LoginDto dto)
+    public async Task<IActionResult> Login(LoginDto dto)
     {
-        var result = await _loginUseCase.ExecuteAsync(dto);
+        var result = await _mediator.Send(new LoginQuery(dto));
         if (result == null)
-            return Unauthorized(new { message = "Credenciales inválidas." });
+            return Unauthorized(new { message = "Usuario o contraseña incorrectos." });
 
         return Ok(result);
-    }
-
-    [HttpGet("me")]
-    [Authorize]
-    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Me()
-    {
-        var userId = User.GetUserId();
-        var user = await _getUserByIdUseCase.ExecuteAsync(userId);
-        if (user == null)
-            return NotFound(new { message = "Usuario no encontrado." });
-
-        return Ok(user);
     }
 }
