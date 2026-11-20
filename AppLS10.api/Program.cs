@@ -8,14 +8,12 @@ builder.Services.AddApplicationServices(builder.Configuration);
 var app = builder.Build();
 
 // Configuración del pipeline de solicitudes HTTP
-if (app.Environment.IsDevelopment())
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "AppLS10 API v1");
-    });
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "AppLS10 API v1");
+    c.RoutePrefix = string.Empty; // Muestra Swagger directamente en la raíz de la URL
+});
 
 app.UseHttpsRedirection();
 
